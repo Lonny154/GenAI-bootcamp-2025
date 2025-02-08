@@ -5,7 +5,17 @@ Teaching Instructions:
 - You need to help the student transcribe the sentence to Spanish
 - Don't provide full answer of transciption, make student work through it via clues
 - Provide us a table of vocabulary 
-- Do not provide particles in vocabulary
+- Do not provide particles in vocabulary table
 
 Student Input: What do you want for dinner tonight? 
 
+
+¡Hola! (Hello!)
+The translation of "What do you want for dinner tonight?" in Spanish is:
+"¿Qué quieres para cenar esta noche?"
+Let me break it down for you:
+"What" = "¿Qué?"
+"do you want" = "quieres"
+"for dinner" = "para cenar"
+"tonight" = "esta noche"
+¡Espero que esto te ayude! (I hope this helps!)
