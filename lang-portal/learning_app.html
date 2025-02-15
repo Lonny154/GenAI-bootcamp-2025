@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .character-display {
+            font-size: 4rem;
+            text-align: center;
+            padding: 2rem;
+            margin: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .info-text {
+            font-size: 1.2rem;
+            color: #6c757d;
+            margin-top: 1rem;
+        }
+        .hidden {
+            display: none;
+        }
+
+        /* Animation keyframes */
+        @keyframes correct-answer {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); background-color: #d4edda; }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes incorrect-answer {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); background-color: #f8d7da; }
+            50% { transform: translateX(10px); background-color: #f8d7da; }
+            75% { transform: translateX(-10px); background-color: #f8d7da; }
+            100% { transform: translateX(0); }
+        }
+
+        @keyframes feedback-slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .correct-animation {
+            animation: correct-answer 0.6s ease-in-out;
+        }
+
+        .incorrect-animation {
+            animation: incorrect-answer 0.6s ease-in-out;
+        }
+
+        .feedback-animation {
+            animation: feedback-slide-in 0.3s ease-out;
+        }
+
+        /* Input focus effect */
+        .translation-input {
+            transition: all 0.3s ease;
+            border: 2px solid #dee2e6;
+        }
+
+        .translation-input:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+
+        /* Button hover effects */
+        .btn {
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Language Learning Portal</a>
+            <a class="btn btn-outline-light" href="/">Back to Home</a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2 class="mb-4">{{ title }}</h2>
+        
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="character-display" id="mainDisplay"></div>
+                <div class="info-text hidden" id="infoDisplay"></div>
+                
+                <div class="text-center mt-3">
+                    <div class="mb-3">
+                        <input type="text" class="form-control mb-2 translation-input" id="translationInput" placeholder="Enter translation...">
+                        <button class="btn btn-success me-2" id="checkButton">Check Answer</button>
+                        <button class="btn btn-primary me-2" id="prevButton">Previous</button>
+                        <button class="btn btn-primary me-2" id="nextButton">Next</button>
+                        <button class="btn btn-secondary" id="infoButton">Show Info</button>
+                    </div>
+                    <div id="feedbackDisplay" class="alert mt-2 feedback-animation" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentItem = null;
+        let items = [];
+        let currentIndex = 0;
+
+        async function loadItems() {
+            const response = await fetch('/api/items');
+            items = await response.json();
+            if (items.length > 0) {
+                currentIndex = 0;
+                updateDisplay();
+            }
+        }
+
+        function updateDisplay() {
+            if (items.length === 0) return;
+            
+            currentItem = items[currentIndex];
+            document.getElementById('mainDisplay').textContent = currentItem.word;
+            document.getElementById('infoDisplay').textContent = currentItem.meaning;
+            document.getElementById('infoDisplay').classList.add('hidden');
+            document.getElementById('translationInput').value = '';
+            document.getElementById('feedbackDisplay').style.display = 'none';
+        }
+
+        async function checkAnswer() {
+            const translationInput = document.getElementById('translationInput').value.trim().toLowerCase();
+            const correctAnswer = currentItem.meaning.toLowerCase();
+            const isCorrect = translationInput === correctAnswer;
+            
+            const mainDisplay = document.getElementById('mainDisplay');
+            const feedbackDisplay = document.getElementById('feedbackDisplay');
+            
+            // Remove previous animation classes
+            mainDisplay.classList.remove('correct-animation', 'incorrect-animation');
+            
+            // Trigger reflow to restart animation
+            void mainDisplay.offsetWidth;
+            
+            // Add new animation class
+            if (isCorrect) {
+                mainDisplay.classList.add('correct-animation');
+                feedbackDisplay.className = 'alert alert-success mt-2 feedback-animation';
+                feedbackDisplay.innerHTML = '<i class="fas fa-check-circle me-2"></i>Correct! Well done!';
+            } else {
+                mainDisplay.classList.add('incorrect-animation');
+                feedbackDisplay.className = 'alert alert-danger mt-2 feedback-animation';
+                feedbackDisplay.innerHTML = `<i class="fas fa-times-circle me-2"></i>Incorrect. The correct answer is: ${currentItem.meaning}`;
+            }
+            
+            feedbackDisplay.style.display = 'block';
+
+            // Record the attempt
+            try {
+                await fetch('/record', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: 'default_user',  // In future, get from auth
+                        vocabulary_id: currentItem.id,
+                        is_correct: isCorrect
+                    })
+                });
+            } catch (error) {
+                console.error('Error recording attempt:', error);
+            }
+        }
+
+        function nextItem() {
+            currentIndex = (currentIndex + 1) % items.length;
+            updateDisplay();
+        }
+
+        function previousItem() {
+            currentIndex = (currentIndex - 1 + items.length) % items.length;
+            updateDisplay();
+        }
+
+        function toggleInfo() {
+            document.getElementById('infoDisplay').classList.toggle('hidden');
+        }
+
+        // Add event listeners
+        document.getElementById('prevButton').addEventListener('click', previousItem);
+        document.getElementById('nextButton').addEventListener('click', nextItem);
+        document.getElementById('infoButton').addEventListener('click', toggleInfo);
+        document.getElementById('checkButton').addEventListener('click', checkAnswer);
+        document.getElementById('translationInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        // Load items when page loads
+        document.addEventListener('DOMContentLoaded', loadItems);
+    </script>
+</body>
+</html>
